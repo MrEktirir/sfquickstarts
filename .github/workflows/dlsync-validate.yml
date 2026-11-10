@@ -15,6 +15,9 @@ jobs:
   validate-snowflake-changes-job:
     runs-on: ubuntu-latest
     environment: dev
+    permissions:
+      contents: read
+      pull-requests: write
     env:
       PROFILE: ${{ vars.PROFILE }}
       DLSYNC_VERSION: "3.2.0"
@@ -45,22 +48,7 @@ jobs:
           warehouse: ${{ secrets.SNOWFLAKE_WAREHOUSE }}
           db: ${{ vars.SNOWFLAKE_DATABASE }}
           schema: ${{ vars.SNOWFLAKE_SCHEMA }}
-        run: |
-          set -o pipefail
-          java -jar "$GITHUB_WORKSPACE/dlsync.jar" \
-            plan \
-            --script-root "$GITHUB_WORKSPACE/db_scripts" \
-            --profile "$PROFILE" 2>&1 | tee /tmp/dlsync-plan.log
-          PLAN_OUTPUT=$(sed -n '/DEPLOYMENT PLAN/,/END PLAN/p' /tmp/dlsync-plan.log)
-
-          if [ -z "$PLAN_OUTPUT" ]; then
-            PLAN_OUTPUT="No deployment plan changes detected."
-          fi
-
-          DELIM=$(uuidgen)
-          echo "PLAN_OUTPUT<<$DELIM" >> "$GITHUB_ENV"
-          echo "$PLAN_OUTPUT" >> "$GITHUB_ENV"
-          echo "$DELIM" >> "$GITHUB_ENV"
+        run: bash scripts/ci/dlsync_plan.sh
 
       - name: Post Plan Output to PR
         uses: actions/github-script@v7
@@ -106,17 +94,7 @@ jobs:
           warehouse: ${{ secrets.SNOWFLAKE_WAREHOUSE }}
           db: ${{ vars.SNOWFLAKE_DATABASE }}
           schema: ${{ vars.SNOWFLAKE_SCHEMA }}
-        run: |
-          set -o pipefail
-          java -jar "$GITHUB_WORKSPACE/dlsync.jar" \
-            test \
-            --script-root "$GITHUB_WORKSPACE/db_scripts" \
-            --profile "$PROFILE" 2>&1 | tee /tmp/dlsync-test.log
-
-          DELIM=$(uuidgen)
-          echo "TEST_OUTPUT<<$DELIM" >> "$GITHUB_ENV"
-          sed -n '/Started Test module/,$p' /tmp/dlsync-test.log >> "$GITHUB_ENV"
-          echo "$DELIM" >> "$GITHUB_ENV"
+        run: bash scripts/ci/dlsync_test.sh
 
       - name: Post Test Results to PR
         if: always()

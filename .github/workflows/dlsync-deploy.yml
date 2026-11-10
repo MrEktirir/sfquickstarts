@@ -15,6 +15,8 @@ permissions:
 jobs:
   deploy-snowflake-changes-job:
     environment: dev
+    permissions:
+      contents: read
     runs-on: ubuntu-latest
     env:
       PROFILE: ${{ vars.PROFILE }}
@@ -45,8 +47,4 @@ jobs:
           warehouse: ${{ secrets.SNOWFLAKE_WAREHOUSE }}
           db: ${{ vars.SNOWFLAKE_DATABASE }}
           schema: ${{ vars.SNOWFLAKE_SCHEMA }}
-        run: |
-          java -jar "$GITHUB_WORKSPACE/dlsync.jar" \
-            deploy \
-            --script-root "$GITHUB_WORKSPACE/db_scripts" \
-            --profile "$PROFILE"
+        run: bash scripts/ci/dlsync_deploy.sh
